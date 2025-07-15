@@ -1,6 +1,7 @@
 import { isPlatformBrowser } from '@angular/common';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
@@ -12,8 +13,8 @@ export interface User {
 }
 
 export interface AuthResponse {
-  user: User;
-  token: string;
+  access_token: string;
+  token_type: string;
 }
 
 @Injectable({
@@ -25,31 +26,36 @@ export class AuthService {
   private platformId = inject(PLATFORM_ID);
 
   public currentUser$ = this.currentUserSubject.asObservable();
-  public isAuthenticated$ = this.currentUser$.pipe(map((user) => !!user));
+  public isAuthenticated$ = this.tokenSubject.pipe(map((token) => !!token));
 
-  constructor(private http: HttpClient) {
+  constructor(private http: HttpClient, private router: Router) {
     this.loadStoredAuth();
   }
 
   private loadStoredAuth() {
     if (isPlatformBrowser(this.platformId)) {
-      const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('token');
-
-      if (storedUser && storedToken) {
-        this.currentUserSubject.next(JSON.parse(storedUser));
+      if (storedToken) {
         this.tokenSubject.next(storedToken);
       }
     }
   }
 
   login(email: string, password: string): Observable<AuthResponse> {
+    const formData = new FormData();
+    formData.append('username', email); // OAuth2 expects 'username' field
+    formData.append('password', password);
+
+    const headers = new HttpHeaders().set('Accept', 'application/json');
+
     return this.http
-      .post<AuthResponse>(`${environment.apiUrl}/auth/login`, {
-        email,
-        password,
+      .post<AuthResponse>(`${environment.apiUrl}/auth/login`, formData, {
+        headers,
       })
-      .pipe(tap((response) => this.handleAuthResponse(response)));
+      .pipe(
+        tap((response) => this.handleAuthResponse(response)),
+        tap(() => this.router.navigate(['/']))
+      );
   }
 
   register(
@@ -63,25 +69,26 @@ export class AuthService {
         password,
         name,
       })
-      .pipe(tap((response) => this.handleAuthResponse(response)));
+      .pipe(
+        tap((response) => this.handleAuthResponse(response)),
+        tap(() => this.router.navigate(['/']))
+      );
   }
 
   logout() {
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.removeItem('user');
       localStorage.removeItem('token');
     }
     this.currentUserSubject.next(null);
     this.tokenSubject.next(null);
+    this.router.navigate(['/auth/login']);
   }
 
   private handleAuthResponse(response: AuthResponse) {
     if (isPlatformBrowser(this.platformId)) {
-      localStorage.setItem('user', JSON.stringify(response.user));
-      localStorage.setItem('token', response.token);
+      localStorage.setItem('token', response.access_token);
     }
-    this.currentUserSubject.next(response.user);
-    this.tokenSubject.next(response.token);
+    this.tokenSubject.next(response.access_token);
   }
 
   getToken(): string | null {

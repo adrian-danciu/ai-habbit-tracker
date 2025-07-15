@@ -1,0 +1,23 @@
+# Angular
+/client/dist
+/client/.angular/cache
+/client/node_modules
+/client/.env
+/client/.env.*
+
+# Python
+/server/venv
+/server/__pycache__
+/server/**/__pycache__
+/server/.env
+/server/.env.*
+*.pyc
+*.pyo
+*.pyd
+
+# IDEs and editors
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store 

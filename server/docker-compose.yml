@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres
+    environment:
+      POSTGRES_USER: habit_user
+      POSTGRES_PASSWORD: habit_pass
+      POSTGRES_DB: habit_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  pg_data:
